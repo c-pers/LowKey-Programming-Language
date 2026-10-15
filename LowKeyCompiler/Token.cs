@@ -1,10 +1,15 @@
+using System;
+
 public enum TokenType
 {
     Keyword,
     Identifier,
+    String,
     Number,
     Operator,
     Symbol,
+    Semicolon,
+    RoundBracket,
     EOF
 }
 

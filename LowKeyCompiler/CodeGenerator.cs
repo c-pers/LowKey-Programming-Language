@@ -21,7 +21,7 @@ class CodeGenerator
                 string varType = varDecl.DataType == "string" ? "char*" : varDecl.DataType;
 
                 code += $"    {varType} {varDecl.VariableName}{(varDecl.InitialValue != null ?
-                        $" = {varDecl.InitialValue};\n" :
+                        $" = {(varType == "char*" ? $"\"{varDecl.InitialValue}\"" : varDecl.InitialValue)};\n" :
                         $";\n")}";
             }
         }

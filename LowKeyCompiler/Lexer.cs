@@ -51,6 +51,19 @@ public class Lexer
                 continue;
             }
 
+            if (c == '"')
+            {
+                Advance();
+
+                string str = ReadWordUntil('"');
+
+                Advance();
+
+                tokens.Add(new Token(TokenType.String, str));
+
+                continue;
+            }
+
             // If its a letter we use ReadWord() to get all the adjacent letters or digits
             if (char.IsLetter(c))
             {
@@ -77,11 +90,37 @@ public class Lexer
                 continue;
             }
 
+            if (char.IsSymbol(c))
+            {
+                // TODO: Search for adjacent symbols or operators (such as += or ++)
+                Advance();
+
+                tokens.Add(new Token(TokenType.Symbol, c.ToString()));
+
+                continue;
+            }
+
+            if (c == '(' || c == ')')
+            {
+                Advance();
+
+                tokens.Add(new Token(TokenType.RoundBracket, c.ToString()));
+
+                continue;
+            }
+
+            if (c == ';')
+            {
+                Advance();
+
+                tokens.Add(new Token(TokenType.Semicolon, c.ToString()));
+
+                continue;
+            }
+
             // In any other case we increment the _position variable
             Advance();
-            
-            // Adds the token to the list with a TEMPORARY operator type
-            // (happens for ;, =, etc)
+
             tokens.Add(new Token(TokenType.Operator, c.ToString()));
         }
 
@@ -100,6 +139,18 @@ public class Lexer
             "int" or "string" or "if" or "else" or "end" or "do" or "while" => TokenType.Keyword,
             _ => TokenType.Identifier
         };
+    }
+
+    private string ReadWordUntil(char stopChar)
+    {
+        int start = _position;
+
+        while (!IsAtEnd() && _source[_position] != stopChar)
+        {
+            Advance();
+        }
+
+        return _source.Substring(start, _position - start);
     }
 
     // Method to get adjacent letters or digit
