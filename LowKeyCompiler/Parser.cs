@@ -77,16 +77,88 @@ public class Parser
             {
                 case "int" or "string":
                     return ParseVariableDeclaration();
-                case "if" or "while":
-                    
-
-                    break;
+                case "if":
+                    return ParseConditional();
             }
         }
 
         ConsumeToken();
 
         return null;
+    }
+
+    // Conditional parser (if statement)
+    private ConditionalNode ParseConditional()
+    {
+        ConditionalNode condNode = new ConditionalNode();
+
+        //  TODO
+
+        ConsumeToken();
+
+        Token currentToken = ConsumeToken();
+        if (currentToken.Value == "(")
+        {
+            BinaryExpressionNode condition = new BinaryExpressionNode();
+
+            currentToken = PeekToken();
+
+            while (_tokenIndex < tokens.Count && currentToken.Value != ")")
+            {
+                if (currentToken.Type == TokenType.Identifier)
+                {
+                    ConsumeToken();
+
+                    VariableExpressionNode left = new VariableExpressionNode();
+
+                    left.varName = currentToken.Value;
+
+                    condition.Left = left;
+
+                    currentToken = PeekToken();
+
+                    if (currentToken.Type == TokenType.Operator)
+                    {
+                        ConsumeToken();
+
+                        condition.Operator = currentToken.Value;
+
+                        currentToken = PeekToken();
+
+                        if (currentToken.Type == TokenType.Number)
+                        {
+                            ConsumeToken();
+
+                            LiteralExpressionNode right = new LiteralExpressionNode();
+
+                            right.text = currentToken.Value.ToString();
+
+                            condition.Right = right;
+                        }
+                    }
+                } else
+                {
+                    ConsumeToken();
+                }
+
+                currentToken = PeekToken();
+            }
+
+            if (PeekToken().Value == ")")
+            {
+                ConsumeToken();
+            } else
+            {
+                Console.WriteLine("Compiler Error: Expected ')' after if condition.");
+            }
+
+            condNode.condition = condition;
+        } else
+        {
+            Console.WriteLine("Compiler Error: Expected '(' after 'if'.");
+        }
+
+        return condNode;
     }
 
     // Variables parser
@@ -105,24 +177,26 @@ public class Parser
         {
             varDeclNode.VariableName = tokenName.Value;
 
-            Token opToken = PeekToken();
+            Token nextToken = PeekToken();
 
             // Verifies the current token, an operator or a semicolon is expected
-            if (opToken.Type == TokenType.Operator)
+            if (nextToken.Type == TokenType.Semicolon)
             {
-                if (opToken.Value == ";")
-                {
-                    ConsumeToken();
-                } else if (opToken.Value == "=")
+                ConsumeToken();
+            } else if (nextToken.Type == TokenType.Symbol)
+            {
+                if (nextToken.Value == "=")
                 {
                     ConsumeToken();
 
                     Token tokenValue = PeekToken();
-                    if (Expect(TokenType.Number))
+                    if (tokenValue.Type == TokenType.Number || tokenValue.Type == TokenType.String)
                     {
+                        ConsumeToken();
+                        
                         varDeclNode.InitialValue = tokenValue.Value;
 
-                        if (PeekToken().Value == ";")
+                        if (PeekToken().Type == TokenType.Semicolon)
                         {
                             ConsumeToken();
                         } else
@@ -133,7 +207,9 @@ public class Parser
                 }
             } else
             {
-                Console.WriteLine($"Expected operator, got {opToken.Type}.");
+                ConsumeToken();
+
+                Console.WriteLine($"Expected operator, got {nextToken.Type}.");
             }
         }
 
