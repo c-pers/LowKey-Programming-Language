@@ -52,6 +52,19 @@ public class Parser
         return false;
     }
 
+    private string GetOperators(string givenOperator)
+    {
+        string opString = givenOperator;
+
+        while (_tokenIndex < tokens.Count && PeekToken().Value == givenOperator) {
+            opString += PeekToken().Value;
+
+            ConsumeToken();
+        }
+
+        return opString;
+    }
+
     // Main method that runs the parsing of the tokens
     public List<ASTNode> ParseProgram()
     {
@@ -79,6 +92,8 @@ public class Parser
                     return ParseVariableDeclaration();
                 case "if":
                     return ParseConditional();
+                case "print":
+                    break;
             }
         }
 
@@ -117,13 +132,17 @@ public class Parser
 
                     currentToken = PeekToken();
 
-                    if (currentToken.Type == TokenType.Operator)
+                    if (currentToken.Type == TokenType.Symbol)
                     {
                         ConsumeToken();
 
-                        condition.Operator = currentToken.Value;
+                        string op = GetOperators(currentToken.Value);
+
+                        condition.Operator = op;
 
                         currentToken = PeekToken();
+
+                        Console.WriteLine(currentToken.Type.ToString());
 
                         if (currentToken.Type == TokenType.Number)
                         {
@@ -150,12 +169,41 @@ public class Parser
             } else
             {
                 Console.WriteLine("Compiler Error: Expected ')' after if condition.");
+
+                return null;
             }
 
             condNode.condition = condition;
         } else
         {
             Console.WriteLine("Compiler Error: Expected '(' after 'if'.");
+
+            return null;
+        }
+
+        List<ASTNode> conditionNodes = new List<ASTNode>();
+
+        while (_tokenIndex < tokens.Count && (currentToken.Value != "else" && currentToken.Value != "end"))
+        {
+            ConsumeToken();
+
+            conditionNodes.Add(ParseStatement());
+        }
+
+        condNode.ifBranch = conditionNodes;
+
+        if (currentToken.Value == "else")
+        {
+            List<ASTNode> elseConditionNodes = new List<ASTNode>();
+
+            while (_tokenIndex < tokens.Count && currentToken.Value != "end")
+            {
+                ConsumeToken();
+
+                elseConditionNodes.Add(ParseStatement());
+            }
+
+            condNode.elseBranch = elseConditionNodes;
         }
 
         return condNode;
