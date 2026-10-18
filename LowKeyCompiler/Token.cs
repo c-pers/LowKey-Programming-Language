@@ -1,16 +1,20 @@
-using System;
+// Everything read by the Lexer returns a Token, composed of its type and a string value
+// A list of tokens will be passed to the parser
 
 public enum TokenType
 {
     Keyword,
     Identifier,
+
     String,
     Number,
+
     Operator,
-    Symbol,
-    Semicolon,
+
     RoundBracket,
-    EOF
+    Semicolon,
+
+    EOF,
 }
 
-public record Token(TokenType Type, string Value);
+public record Token(TokenType type, string value);

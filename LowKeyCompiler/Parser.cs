@@ -1,266 +1,259 @@
-using System;
+// The Parser aims to get the list of tokens returned by the lexer and to convert everything to Abstract Syntax Tree nodes
+
+using System.Runtime.InteropServices;
 
 public class Parser
 {
-    // Initialized a read only list of tokens (got from the lexer)
-    // and token index
-    private readonly List<Token> tokens;
-
+    private readonly List<Token> Tokens;
     private int _tokenIndex = 0;
 
-    // Default constructor
+    private SymbolTable symbolTable = new SymbolTable();
+
+    private string[] VariableDeclarationKeywords =
+    {
+      "int",
+      "string",
+      "decimal",  
+    };
+
     public Parser(List<Token> tokens)
     {
-        this.tokens = tokens;
+        Tokens = tokens;
     }
 
-    // Gets the current token from the list and returns it
-    private Token PeekToken()
+    // Peeks the current token
+    private Token Peek()
     {
-        if (_tokenIndex >= tokens.Count)
+        if (_tokenIndex >= Tokens.Count)
         {
             return new Token(TokenType.EOF, "");
         }
 
-        return tokens[_tokenIndex];
-    }
-
-    // Consumes the current token and increments the _tokenIndex variable
-    private Token ConsumeToken()
-    {
-        Token currentToken = PeekToken();
-
-        _tokenIndex++;
+        Token currentToken = Tokens[_tokenIndex];
 
         return currentToken;
     }
 
-    // Method to verify the given token type is the expected type
-    private bool Expect(TokenType type)
+    // Returns the current token and changes the pointer to the next one
+    // It will always return the peeked token before the iteration
+    private Token Consume(int? repeat = 1)
     {
-        Token currentToken = PeekToken();
+        Token currentToken = Peek();
 
-        if (currentToken.Type == type)
+        for (int i = 0; i < repeat; i++)
         {
-            ConsumeToken();
-
-            return true;
+            _tokenIndex++;
         }
 
-        Console.WriteLine($"Compiler Error: Expected {type}, got {currentToken.Type}.");
+        return currentToken;
+    }
+
+    // Helper method to check if the current token type is the expected one
+    private bool Expect(TokenType type)
+    {
+        if (Peek().type == type)
+        {
+            return true;
+        }
 
         return false;
     }
 
-    private string GetOperators(string givenOperator)
-    {
-        string opString = givenOperator;
-
-        while (_tokenIndex < tokens.Count && PeekToken().Value == givenOperator) {
-            opString += PeekToken().Value;
-
-            ConsumeToken();
-        }
-
-        return opString;
-    }
-
-    // Main method that runs the parsing of the tokens
+    // Main method to parse the entire file
     public List<ASTNode> ParseProgram()
     {
-        List<ASTNode> nodes = new List<ASTNode>();
+        List<ASTNode> Nodes = new List<ASTNode>();
 
-        while (PeekToken().Type != TokenType.EOF)
+        // Runs until the current token type isn't the end of the file
+        while (Peek().type != TokenType.EOF)
         {
-            nodes.Add(ParseStatement());
+            Nodes.Add(Parse());
         }
 
-        return nodes;
+        return Nodes;
     }
 
-    private StatementNode ParseStatement()
+    // Responsible of checking the current token's type and calling the respective method
+    private ASTNode Parse()
     {
-        // Peeks the current token
-        Token currentToken = PeekToken();
+        Token currentToken = Peek();
 
-        if (currentToken.Type == TokenType.Keyword)
+        if (currentToken.type == TokenType.Keyword)
         {
-            // Checks the value and calls the corresponding method
-            switch (currentToken.Value)
+            if (VariableDeclarationKeywords.Contains(currentToken.value))
             {
-                case "int" or "string":
-                    return ParseVariableDeclaration();
-                case "if":
-                    return ParseConditional();
-                case "print":
-                    break;
+                return ParseVariableDeclaration();
             }
+        } else if (currentToken.type == TokenType.Identifier)
+        {
+            return ParseVariableAssignment();
         }
-
-        ConsumeToken();
 
         return null;
     }
 
-    // Conditional parser (if statement)
-    private ConditionalNode ParseConditional()
-    {
-        ConditionalNode condNode = new ConditionalNode();
-
-        //  TODO
-
-        ConsumeToken();
-
-        Token currentToken = ConsumeToken();
-        if (currentToken.Value == "(")
-        {
-            BinaryExpressionNode condition = new BinaryExpressionNode();
-
-            currentToken = PeekToken();
-
-            while (_tokenIndex < tokens.Count && currentToken.Value != ")")
-            {
-                if (currentToken.Type == TokenType.Identifier)
-                {
-                    ConsumeToken();
-
-                    VariableExpressionNode left = new VariableExpressionNode();
-
-                    left.varName = currentToken.Value;
-
-                    condition.Left = left;
-
-                    currentToken = PeekToken();
-
-                    if (currentToken.Type == TokenType.Symbol)
-                    {
-                        ConsumeToken();
-
-                        string op = GetOperators(currentToken.Value);
-
-                        condition.Operator = op;
-
-                        currentToken = PeekToken();
-
-                        Console.WriteLine(currentToken.Type.ToString());
-
-                        if (currentToken.Type == TokenType.Number)
-                        {
-                            ConsumeToken();
-
-                            LiteralExpressionNode right = new LiteralExpressionNode();
-
-                            right.text = currentToken.Value.ToString();
-
-                            condition.Right = right;
-                        }
-                    }
-                } else
-                {
-                    ConsumeToken();
-                }
-
-                currentToken = PeekToken();
-            }
-
-            if (PeekToken().Value == ")")
-            {
-                ConsumeToken();
-            } else
-            {
-                Console.WriteLine("Compiler Error: Expected ')' after if condition.");
-
-                return null;
-            }
-
-            condNode.condition = condition;
-        } else
-        {
-            Console.WriteLine("Compiler Error: Expected '(' after 'if'.");
-
-            return null;
-        }
-
-        List<ASTNode> conditionNodes = new List<ASTNode>();
-
-        while (_tokenIndex < tokens.Count && (currentToken.Value != "else" && currentToken.Value != "end"))
-        {
-            ConsumeToken();
-
-            conditionNodes.Add(ParseStatement());
-        }
-
-        condNode.ifBranch = conditionNodes;
-
-        if (currentToken.Value == "else")
-        {
-            List<ASTNode> elseConditionNodes = new List<ASTNode>();
-
-            while (_tokenIndex < tokens.Count && currentToken.Value != "end")
-            {
-                ConsumeToken();
-
-                elseConditionNodes.Add(ParseStatement());
-            }
-
-            condNode.elseBranch = elseConditionNodes;
-        }
-
-        return condNode;
-    }
-
-    // Variables parser
+    // Responsible for variable declarations (e.g. int x = 1)
     private VariableDeclarationNode ParseVariableDeclaration()
     {
         VariableDeclarationNode varDeclNode = new VariableDeclarationNode();
 
-        varDeclNode.DataType = PeekToken().Value;
+        string varType = Peek().value;
 
-        // Consumes the token
-        ConsumeToken();
+        varDeclNode.DataType = Peek().value;
 
-        Token tokenName = PeekToken();
-        // Verifies the current token
+        Consume();
+
+        Token currentToken = Peek();
+
         if (Expect(TokenType.Identifier))
         {
-            varDeclNode.VariableName = tokenName.Value;
+            varDeclNode.VariableName = currentToken.value;
 
-            Token nextToken = PeekToken();
+            if (!symbolTable.Declare(varDeclNode.VariableName, varType))
+            {
+                Console.WriteLine($"Compiler Error: A variable named '{varDeclNode.VariableName}' already exists.");
 
-            // Verifies the current token, an operator or a semicolon is expected
-            if (nextToken.Type == TokenType.Semicolon)
+                return null;
+            }
+
+            Consume();
+
+            if (Peek().value == "=")
             {
-                ConsumeToken();
-            } else if (nextToken.Type == TokenType.Symbol)
-            {
-                if (nextToken.Value == "=")
+                Consume();
+
+                currentToken = Peek();
+
+                Consume();
+
+                if (currentToken.type == TokenType.Number)
                 {
-                    ConsumeToken();
-
-                    Token tokenValue = PeekToken();
-                    if (tokenValue.Type == TokenType.Number || tokenValue.Type == TokenType.String)
+                    if (varDeclNode.DataType == "int")
                     {
-                        ConsumeToken();
-                        
-                        varDeclNode.InitialValue = tokenValue.Value;
-
-                        if (PeekToken().Type == TokenType.Semicolon)
+                        if (currentToken.value.Contains(',') || currentToken.value.Contains("."))
                         {
-                            ConsumeToken();
+                            Console.WriteLine("Compiler Error: Cannot implicitly convert decimal to int.");
+
+                            return null;
                         } else
                         {
-                            Console.WriteLine($"Expected ';'. got {PeekToken().Value}.");
+                            varDeclNode.InitialValue = currentToken.value;
                         }
+                    } else
+                    {
+                        varDeclNode.InitialValue = currentToken.value;
                     }
+                } else
+                {
+                    varDeclNode.InitialValue = currentToken.value;
+                }
+
+                if (!Expect(TokenType.Semicolon))
+                {
+                    Console.WriteLine("Compiler Error: Expected ';'.");
+
+                    return null;
+                } else
+                {
+                    Consume();
                 }
             } else
             {
-                ConsumeToken();
+                Console.WriteLine($"Compiler Error: '=' expected, got {currentToken.value}.");
 
-                Console.WriteLine($"Expected operator, got {nextToken.Type}.");
+                return null;
             }
+        } else
+        {
+            Console.WriteLine($"Compiler Error: Expected an identifier, got {currentToken.type}.");
+
+            return null;
         }
 
         return varDeclNode;
+    }
+
+    private VariableAssignmentNode ParseVariableAssignment()
+    {
+        VariableAssignmentNode varAssNode = new VariableAssignmentNode();
+
+        if (Expect(TokenType.Identifier))
+        {
+            varAssNode.VariableName = Peek().value;
+
+            Consume();
+
+            string varType;
+
+            if (symbolTable.Exists(varAssNode.VariableName))
+            {
+                varType = symbolTable.GetType(varAssNode.VariableName);
+            } else
+            {
+                Console.WriteLine($"Compiler Error: No variable named '{varAssNode.VariableName}' found. Have you declared it?");
+
+                return null;
+            }
+
+            if (Expect(TokenType.Operator))
+            {
+                varAssNode.Operator = Peek().value;
+
+                Consume();
+
+                if (varType == "int")
+                {
+                    if (Expect(TokenType.Number))
+                    {
+                        if (Peek().value.Contains(',') || Peek().value.Contains('.'))
+                        {
+                            Console.WriteLine("Compiler Error: Cannot implicitly convert decimal to int.");
+
+                            return null;
+                        } else
+                        {
+                            varAssNode.newValue = Peek().value;
+
+                            Consume();
+                        }
+                    }
+                } else if (varType == "decimal")
+                {
+                    if (Expect(TokenType.Number))
+                    {
+                        varAssNode.newValue = Peek().value;
+
+                        Consume();
+                    }
+                } else if (varType == "string")
+                {
+                    varAssNode.newValue = $"\"{Peek().value}\"";
+
+                    Consume();
+                }
+
+                if (Expect(TokenType.Semicolon))
+                {
+                    Consume();
+                } else
+                {
+                    Console.WriteLine($"Compiler Error: ';' expected, got {Peek().value}.");
+
+                    return null;
+                }
+            } else
+            {
+                Console.WriteLine($"Compiler Error: Operator expected, got {Peek().type}.");
+
+                return null;
+            }
+        } else
+        {
+            Console.WriteLine($"Compiler Error: Variable identifier expected, got {Peek().type}.");
+
+            return null;
+        }
+
+        return varAssNode;
     }
 }

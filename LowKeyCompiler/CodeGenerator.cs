@@ -1,11 +1,10 @@
-using System;
-
-class CodeGenerator
+public class CodeGenerator
 {
-    private readonly List<ASTNode> nodes;
-    public CodeGenerator(List<ASTNode> nodes)
+    private readonly List<ASTNode> Nodes;
+
+    public CodeGenerator(List<ASTNode> Nodes)
     {
-        this.nodes = nodes;
+        this.Nodes = Nodes;
     }
 
     public string Generate()
@@ -14,58 +13,28 @@ class CodeGenerator
                       "int Main()\n" +
                       "{\n";
 
-        code += NestedCodeGenerator(nodes);
+        foreach (ASTNode node in Nodes)
+        {
+            if (node is VariableDeclarationNode varDeclNode)
+            {
+                string varType = varDeclNode.DataType == "string" ? "char*" : varDeclNode.DataType;
+
+                code += $"    {varType} ";
+                code += $"{varDeclNode.VariableName} ";
+                code += $"= ";
+                code += $"{(varDeclNode.InitialValue != null ? 
+                    $"{(varType == "char*" ? $"\"{varDeclNode.InitialValue}\"" : $"{varDeclNode.InitialValue}")};\n" : 
+                    $";\n")}";
+            } else if (node is VariableAssignmentNode varAssNode)
+            {
+                code += $"    {varAssNode.VariableName} ";
+                code += $"{varAssNode.Operator} ";
+                code += $"{varAssNode.newValue};\n";
+            }
+        }
 
         code += "}";
 
         return code;
-    }
-
-    private string NestedCodeGenerator(List<ASTNode> nodesToCheck)
-    {
-        string localCode = "";
-
-        foreach (ASTNode node in nodesToCheck)
-        {
-            if (node is VariableDeclarationNode varDecl)
-            {
-                string varType = varDecl.DataType == "string" ? "char*" : varDecl.DataType;
-
-                localCode += $"    {varType} {varDecl.VariableName}{(varDecl.InitialValue != null ?
-                        $" = {(varType == "char*" ? $"\"{varDecl.InitialValue}\"" : varDecl.InitialValue)};\n" :
-                        $";\n")}";
-            } else if (node is ConditionalNode condNode)
-            {
-                localCode += "    if ";
-                localCode += ExpressionAnalyzer(condNode);
-                localCode += " do\n";
-
-                localCode += NestedCodeGenerator(condNode.ifBranch);
-            } else
-            {
-                Console.WriteLine("Not handled yet.");
-            }
-        }
-
-        return localCode;
-    }
-
-    private string ExpressionAnalyzer(ConditionalNode condNode)
-    {
-        string localCode = "";
-
-        if (condNode.condition.Left is VariableExpressionNode varExpNode)
-        {
-            localCode += $"({varExpNode.varName} ";
-        }
-
-        localCode += $"{condNode.condition.Operator} ";
-
-        if (condNode.condition.Right is LiteralExpressionNode litExpNode)
-        {
-            localCode += $"{litExpNode.text})";
-        }
-
-        return localCode;
     }
 }
