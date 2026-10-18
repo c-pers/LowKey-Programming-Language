@@ -1,181 +1,194 @@
-using System;
+// The Lexer main job is to read the entire file, character by character, and convert what it reads to tokens
+// See Token.cs to see how a token is structured
 
 public class Lexer
 {
-    // Initializing read only source code and position index (analyzing char-by-char)
     private readonly string _source;
     private int _position = 0;
 
-    // Default constructor
+    private char[] operators =
+    {
+      '=',
+      '+',
+      '-',
+      '*',
+      '/',  
+    };
+
+    // Constructor, gets the string to analyze (entire file)
     public Lexer(string source)
     {
         _source = source;
     }
 
-    // Checks if we reached the end of the source file
-    private bool IsAtEnd() => _position >= _source.Length;
-
-    // Checks the current char in _position. Returns an empty character if we reached the end
+    // Peeks the current character, returns a null character if _position has reached the end of _source
     private char Peek()
     {
-        if (IsAtEnd()) return '\0';
+        if (_position >= _source.Length)
+        {
+            return '\0';
+        }
 
         return _source[_position];
     }
 
-    // Peeks the current character and increments the _position variable
+    // Gets the current character and advances
     private char Advance()
-    {
-        char currentChar = Peek();
+    {   
+        char c = _source[_position];
 
         _position++;
 
-        return currentChar;
+        return c;
     }
 
-    // Method to add the tokens to the list of tokens
-    public List<Token> Tokenize()
+    // Gets all the adjacent numbers, commas and periods (for non-integer numbers)
+    private string ReadNumber()
     {
-        var tokens = new List<Token>();
+        int _start = _position;
 
-        // Repeat until the end of the file isn't reached
-        while (!IsAtEnd())
+        while (_position < _source.Length && (char.IsDigit(Peek()) || Peek() == ',' || Peek() == '.'))
         {
-            char c = Peek();
-
-            // If its a white space we advance and skip
-            if (char.IsWhiteSpace(c))
-            {
-                Advance();
-
-                continue;
-            }
-
-            if (c == '"')
-            {
-                Advance();
-
-                string str = ReadWordUntil('"');
-
-                Advance();
-
-                tokens.Add(new Token(TokenType.String, str));
-
-                continue;
-            }
-
-            // If its a letter we use ReadWord() to get all the adjacent letters or digits
-            if (char.IsLetter(c))
-            {
-                string word = ReadWord();
-
-                // Checks the token type
-                // It requires a keyword or an identifier
-                TokenType type = KeywordOrIdentifier(word);
-
-                // Adds the new token to the list
-                tokens.Add(new Token(type, word));
-
-                continue;
-            }
-
-            // If its a digit we use ReadNumber(). Works similar to ReadWord()
-            if (char.IsDigit(c))
-            {
-                string number = ReadNumber();
-
-                // Adds the new token to the list
-                tokens.Add(new Token(TokenType.Number, number));
-
-                continue;
-            }
-
-            if (char.IsSymbol(c))
-            {
-                // TODO: Search for adjacent symbols or operators (such as += or ++)
-                Advance();
-
-                tokens.Add(new Token(TokenType.Symbol, c.ToString()));
-
-                continue;
-            }
-
-            if (c == '(' || c == ')')
-            {
-                Advance();
-
-                tokens.Add(new Token(TokenType.RoundBracket, c.ToString()));
-
-                continue;
-            }
-
-            if (c == ';')
-            {
-                Advance();
-
-                tokens.Add(new Token(TokenType.Semicolon, c.ToString()));
-
-                continue;
-            }
-
-            // In any other case we increment the _position variable
             Advance();
-
-            tokens.Add(new Token(TokenType.Operator, c.ToString()));
         }
 
-        // Once the while is ended we add a token of type EOF to the list
-        tokens.Add(new Token(TokenType.EOF, ""));
-
-        // Returns the list
-        return tokens;
+        return _source.Substring(_start, _position - _start);
     }
 
-    // Checks if the given text is a lk keyword or an identifier (such as variable names)
+    // Reads the adjacent characters to get a complete word
+    private string ReadWord()
+    {
+        int _start = _position;
+
+        while (_position < _source.Length && char.IsLetterOrDigit(Peek()))
+        {
+            Advance();
+        }
+
+        return _source.Substring(_start, _position - _start);
+    }
+
+    // Reads everything that is inside ""
+    private string ReadString()
+    {
+        int _start = _position;
+
+        while (_position < _source.Length && Peek() != '"')
+        {
+            Advance();
+        }
+
+        return _source.Substring(_start, _position - _start);
+    }
+
+    private string ReadOperators()
+    {
+        int _start = _position;
+
+        while (_position < _source.Length && operators.Contains(Peek()))
+        {
+            Advance();
+        }
+
+        return _source.Substring(_start, _position - _start);
+    }
+
+    // Defines if the given string is a keyword or an identifier
     private TokenType KeywordOrIdentifier(string text)
     {
         return text switch
         {
-            "int" or "string" or "if" or "else" or "end" or "do" or "while" => TokenType.Keyword,
+            "int" or "string" or "decimal" or "if" or "do" or "else" or "end" => TokenType.Keyword,
             _ => TokenType.Identifier
         };
     }
 
-    private string ReadWordUntil(char stopChar)
+    // The main method that converts everything to tokens
+    public List<Token> Tokenizer()
     {
-        int start = _position;
+        List<Token> Tokens = new List<Token>();
 
-        while (!IsAtEnd() && _source[_position] != stopChar)
+        while (_position < _source.Length)
         {
-            Advance();
+            char currentChar = Peek();
+
+            // If the char is an empty space we skip
+            if (char.IsWhiteSpace(currentChar))
+            {
+                Advance();
+
+                continue;
+            }
+
+            // If its a digit we call ReadNumber()
+            if (char.IsDigit(currentChar))
+            {
+                string number = ReadNumber();
+
+                Tokens.Add(new Token(TokenType.Number, number));
+
+                continue;
+            }
+
+            // If its a word we call ReadWord()
+            if (char.IsLetter(currentChar))
+            {
+                string word = ReadWord();
+
+                TokenType type = KeywordOrIdentifier(word);
+
+                Tokens.Add(new Token(type, word));
+
+                continue;
+            }
+
+            // If its " we call ReadString() and read everything until the next "
+            if (currentChar == '"')
+            {
+                Advance();
+
+                string str = ReadString();
+
+                Tokens.Add(new Token(TokenType.String, str));
+
+                Advance();
+
+                continue;
+            }
+
+            // Checks if the current character is an operator and get the adjacent operators
+            if (operators.Contains(currentChar))
+            {
+                string ops = ReadOperators();
+
+                Tokens.Add(new Token(TokenType.Operator, ops));
+
+                continue;
+            }
+
+            // Checks if the current character is a round bracket
+            if (currentChar == '(' || currentChar == ')')
+            {
+                Tokens.Add(new Token(TokenType.RoundBracket, $"{currentChar}"));
+
+                Advance();
+
+                continue;
+            }
+
+            // Checks if the current character is a semicolon
+            if (currentChar == ';')
+            {
+                Tokens.Add(new Token(TokenType.Semicolon, ";"));
+
+                Advance();
+
+                continue;
+            }
         }
 
-        return _source.Substring(start, _position - start);
-    }
+        Tokens.Add(new Token(TokenType.EOF, ""));
 
-    // Method to get adjacent letters or digit
-    private string ReadWord()
-    {
-        int start = _position;
-
-        while (!IsAtEnd() && char.IsLetterOrDigit(Peek()))
-        {
-            Advance();
-        }
-
-        return _source.Substring(start, _position - start);
-    }
-
-    // Method to get adjacent digits
-    private string ReadNumber()
-    {
-        int start = _position;
-
-        while (!IsAtEnd() && char.IsDigit(Peek()))
-        {
-            Advance();
-        }
-
-        return _source.Substring(start, _position - start);
+        return Tokens;
     }
 }
