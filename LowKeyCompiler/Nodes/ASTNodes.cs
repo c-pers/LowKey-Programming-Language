@@ -33,7 +33,9 @@ public class VariableAssignmentNode : StatementNode
 
 public class ConditionalNode : StatementNode
 {
-    
+    public ExpressionNode Condition { get; set; }
+    public List<ASTNode> IfBranch { get; set; } = new List<ASTNode>();
+    public List<ASTNode> ElseBranch { get; set; } = new List<ASTNode>();
 }
 
 public class PrintStatementNode : StatementNode

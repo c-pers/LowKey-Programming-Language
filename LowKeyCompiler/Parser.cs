@@ -83,6 +83,9 @@ public class Parser
             if (VariableDeclarationKeywords.Contains(currentToken.value))
             {
                 return ParseVariableDeclaration();
+            } else if (currentToken.value == "if")
+            {
+                return ParseCondition();
             }
         } else if (currentToken.type == TokenType.Identifier)
         {
@@ -96,7 +99,25 @@ public class Parser
 
     private ExpressionNode ParseExpression()
     {
-        return ParseAdditive();
+        return ParseComparison();
+    }
+
+    private ExpressionNode ParseComparison()
+    {
+        ExpressionNode left = ParseAdditive();
+
+        string[] comparisonOperators = { "==", "<", ">", "<=", ">=" };
+
+        while (comparisonOperators.Contains(Peek().value))
+        {
+            string op = Consume().value;
+
+            ExpressionNode right = ParseAdditive();
+
+            left = new BinaryExpressionNode { Left = left, Operator = op, Right = right };
+        }
+
+        return left;
     }
 
     private ExpressionNode ParseAdditive()
@@ -167,7 +188,7 @@ public class Parser
                 Consume();
             } else
             {
-                Console.WriteLine("Compiler Error: Expected ')' after expression.");
+                Console.WriteLine($"Compiler Error: Expected ')' after expression, got {Peek().value}.");
             }
 
             return new GroupingExpressionNode { Expression = expr };
@@ -295,5 +316,71 @@ public class Parser
         }
 
         return varAssNode;
+    }
+
+    private ConditionalNode ParseCondition()
+    {
+        ConditionalNode condNode = new ConditionalNode();
+
+        if (Peek().value == "if")
+        {
+            Consume();
+
+            ExpressionNode expr = ParseExpression();
+
+            condNode.Condition = expr;
+
+            if (Peek().value == "do")
+            {
+                Consume();
+
+                while (Peek().type != TokenType.EOF && Peek().value != "end" && Peek().value != "else")
+                {
+                    ASTNode stmt = Parse();
+
+                    if (stmt != null)
+                    {
+                        condNode.IfBranch.Add(stmt);
+                    } else
+                    {
+                        Consume();
+                    }
+                }
+            }
+        }
+
+        if (Peek().value == "else")
+        {
+            Consume();
+
+            if (Peek().value == "if")
+            {
+                // Nothing for now
+            } else
+            {
+                while (Peek().type != TokenType.EOF && Peek().value != "end")
+                {
+                    ASTNode stmt = Parse();
+
+                    if (stmt != null)
+                    {
+                        condNode.ElseBranch.Add(stmt);
+                    } else
+                    {
+                        Consume();
+                    }
+                }
+            }
+        }
+
+        if (Peek().value == "end")
+        {
+            Consume();
+        } else
+        {
+            Console.WriteLine($"Compiler Error: Expected 'end', got '{Peek().value}'.");
+        }
+
+        return condNode;
     }
 }

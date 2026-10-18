@@ -1,3 +1,5 @@
+using System.Xml;
+
 public class CodeGenerator
 {
     private readonly List<ASTNode> Nodes;
@@ -15,34 +17,69 @@ public class CodeGenerator
 
         foreach (ASTNode node in Nodes)
         {
-            if (node is VariableDeclarationNode varDeclNode)
-            {
-                string varType = varDeclNode.DataType == "string" ? "char*" : varDeclNode.DataType;
-
-                code += $"    {varType} {varDeclNode.VariableName}";
-
-                if (varDeclNode.InitialValue != null)
-                {
-                    code += " = ";
-
-                    code += GenerateExpression(varDeclNode.InitialValue);
-                }
-
-                code += ";\n";
-            } else if (node is VariableAssignmentNode varAssNode)
-            {
-                code += $"    {varAssNode.VariableName} {varAssNode.Operator} ";
-                
-                if (varAssNode.ValueExpression is ExpressionNode exprNode)
-                {
-                    code += GenerateExpression(exprNode);
-                }
-
-                code += ";\n";
-            }
+            code += GenerateNode(node);
         }
 
         code += "}";
+
+        return code;
+    }
+
+    private string GenerateNode(ASTNode node)
+    {
+        string code = "";
+
+        if (node is VariableDeclarationNode varDeclNode)
+        {
+            string varType = varDeclNode.DataType == "string" ? "char*" : varDeclNode.DataType;
+
+            code += $"    {varType} {varDeclNode.VariableName}";
+
+            if (varDeclNode.InitialValue != null)
+            {
+                code += " = ";
+                code += GenerateExpression(varDeclNode.InitialValue);
+            }
+
+            code += ";\n";
+        } else if (node is VariableAssignmentNode varAssNode)
+        {
+            code += $"    {varAssNode.VariableName} {varAssNode.Operator} ";
+            
+            if (varAssNode.ValueExpression is ExpressionNode exprNode)
+            {
+                code += GenerateExpression(exprNode);
+            }
+
+            code += ";\n";
+        } else if (node is ConditionalNode condNode)
+        {
+            code += "    if ";
+
+            if (condNode.Condition is ExpressionNode exprNode)
+            {
+                code += GenerateExpression(exprNode);
+            }
+
+            code += " {\n";
+
+            foreach (ASTNode ifNode in condNode.IfBranch)
+            {
+                code += $"    {GenerateNode(ifNode)}";
+            }
+
+            if (condNode.ElseBranch != null && condNode.ElseBranch.Count > 0)
+            {
+                code += "    } else\n    {\n";
+
+                foreach (ASTNode elseNode in condNode.ElseBranch)
+                {
+                    code += $"    {GenerateNode(elseNode)}";
+                }
+            }
+
+            code += "    }\n";
+        }
 
         return code;
     }
