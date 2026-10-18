@@ -13,7 +13,7 @@ public class Parser
     {
       "int",
       "string",
-      "decimal",  
+      "decimal",
     };
 
     public Parser(List<Token> tokens)
@@ -92,6 +92,94 @@ public class Parser
         return null;
     }
 
+    // Expressions
+
+    private ExpressionNode ParseExpression()
+    {
+        return ParseAdditive();
+    }
+
+    private ExpressionNode ParseAdditive()
+    {
+        ExpressionNode left = ParseMultiplicative();
+
+        while (Peek().value == "+" || Peek().value == "-")
+        {
+            string op = Consume().value;
+
+            ExpressionNode right = ParseMultiplicative();
+
+            left = new BinaryExpressionNode { Left = left, Operator = op, Right = right };
+        }
+
+        return left;
+    }
+
+    private ExpressionNode ParseMultiplicative()
+    {
+        ExpressionNode left = ParsePrimary();
+
+        while (Peek().value == "*" || Peek().value == "/")
+        {
+            string op = Consume().value;
+
+            ExpressionNode right = ParsePrimary();
+
+            left = new BinaryExpressionNode { Left = left, Operator = op, Right = right };
+        }
+
+        return left;
+    }
+
+    private ExpressionNode ParsePrimary()
+    {
+        Token currentToken = Peek();
+
+        if (currentToken.type == TokenType.Number)
+        {
+            Consume();
+
+            return new LiteralExpressionNode { Value = currentToken.value, Type = "number" };
+        }
+
+        if (currentToken.type == TokenType.String)
+        {
+            Consume();
+
+            return new LiteralExpressionNode { Value = currentToken.value, Type = "string" };
+        }
+
+        if (currentToken.type == TokenType.Identifier)
+        {
+            Consume();
+
+            return new VariableExpressionNode { VariableName = currentToken.value };
+        }
+
+        if (currentToken.value == "(")
+        {
+            Consume();
+
+            ExpressionNode expr = ParseExpression();
+
+            if (Peek().value == ")")
+            {
+                Consume();
+            } else
+            {
+                Console.WriteLine("Compiler Error: Expected ')' after expression.");
+            }
+
+            return new GroupingExpressionNode { Expression = expr };
+        }
+
+        Console.WriteLine($"Compiler Error: Unexpected token '{currentToken.value}' in expression.");
+
+        return null;
+    }
+
+    // Statements
+
     // Responsible for variable declarations (e.g. int x = 1)
     private VariableDeclarationNode ParseVariableDeclaration()
     {
@@ -124,29 +212,9 @@ public class Parser
 
                 currentToken = Peek();
 
-                Consume();
+                ExpressionNode expr = ParseExpression();
 
-                if (currentToken.type == TokenType.Number)
-                {
-                    if (varDeclNode.DataType == "int")
-                    {
-                        if (currentToken.value.Contains(',') || currentToken.value.Contains("."))
-                        {
-                            Console.WriteLine("Compiler Error: Cannot implicitly convert decimal to int.");
-
-                            return null;
-                        } else
-                        {
-                            varDeclNode.InitialValue = currentToken.value;
-                        }
-                    } else
-                    {
-                        varDeclNode.InitialValue = currentToken.value;
-                    }
-                } else
-                {
-                    varDeclNode.InitialValue = currentToken.value;
-                }
+                varDeclNode.InitialValue = expr;
 
                 if (!Expect(TokenType.Semicolon))
                 {
@@ -157,15 +225,13 @@ public class Parser
                 {
                     Consume();
                 }
-            } else
+            } else if (Peek().value == ";")
             {
-                Console.WriteLine($"Compiler Error: '=' expected, got {currentToken.value}.");
-
-                return null;
+                Consume();
             }
         } else
         {
-            Console.WriteLine($"Compiler Error: Expected an identifier, got {currentToken.type}.");
+            Console.WriteLine($"Compiler Error: Expected an identifier, got '{currentToken.type}'.");
 
             return null;
         }
@@ -173,6 +239,7 @@ public class Parser
         return varDeclNode;
     }
 
+    // Responsible for variable assignment (e.g. x = 5 + 10)
     private VariableAssignmentNode ParseVariableAssignment()
     {
         VariableAssignmentNode varAssNode = new VariableAssignmentNode();
@@ -201,55 +268,28 @@ public class Parser
 
                 Consume();
 
-                if (varType == "int")
-                {
-                    if (Expect(TokenType.Number))
-                    {
-                        if (Peek().value.Contains(',') || Peek().value.Contains('.'))
-                        {
-                            Console.WriteLine("Compiler Error: Cannot implicitly convert decimal to int.");
+                ExpressionNode expr = ParseExpression();
 
-                            return null;
-                        } else
-                        {
-                            varAssNode.newValue = Peek().value;
-
-                            Consume();
-                        }
-                    }
-                } else if (varType == "decimal")
-                {
-                    if (Expect(TokenType.Number))
-                    {
-                        varAssNode.newValue = Peek().value;
-
-                        Consume();
-                    }
-                } else if (varType == "string")
-                {
-                    varAssNode.newValue = $"\"{Peek().value}\"";
-
-                    Consume();
-                }
+                varAssNode.ValueExpression = expr;
 
                 if (Expect(TokenType.Semicolon))
                 {
                     Consume();
                 } else
                 {
-                    Console.WriteLine($"Compiler Error: ';' expected, got {Peek().value}.");
+                    Console.WriteLine($"Compiler Error: ';' expected, got '{Peek().value}'.");
 
                     return null;
                 }
             } else
             {
-                Console.WriteLine($"Compiler Error: Operator expected, got {Peek().type}.");
+                Console.WriteLine($"Compiler Error: Operator expected, got '{Peek().type}'.");
 
                 return null;
             }
         } else
         {
-            Console.WriteLine($"Compiler Error: Variable identifier expected, got {Peek().type}.");
+            Console.WriteLine($"Compiler Error: Variable identifier expected, got '{Peek().type}'.");
 
             return null;
         }

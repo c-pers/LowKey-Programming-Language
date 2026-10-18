@@ -19,22 +19,59 @@ public class CodeGenerator
             {
                 string varType = varDeclNode.DataType == "string" ? "char*" : varDeclNode.DataType;
 
-                code += $"    {varType} ";
-                code += $"{varDeclNode.VariableName} ";
-                code += $"= ";
-                code += $"{(varDeclNode.InitialValue != null ? 
-                    $"{(varType == "char*" ? $"\"{varDeclNode.InitialValue}\"" : $"{varDeclNode.InitialValue}")};\n" : 
-                    $";\n")}";
+                code += $"    {varType} {varDeclNode.VariableName}";
+
+                if (varDeclNode.InitialValue != null)
+                {
+                    code += " = ";
+
+                    code += GenerateExpression(varDeclNode.InitialValue);
+                }
+
+                code += ";\n";
             } else if (node is VariableAssignmentNode varAssNode)
             {
-                code += $"    {varAssNode.VariableName} ";
-                code += $"{varAssNode.Operator} ";
-                code += $"{varAssNode.newValue};\n";
+                code += $"    {varAssNode.VariableName} {varAssNode.Operator} ";
+                
+                if (varAssNode.ValueExpression is ExpressionNode exprNode)
+                {
+                    code += GenerateExpression(exprNode);
+                }
+
+                code += ";\n";
             }
         }
 
         code += "}";
 
         return code;
+    }
+
+    private string GenerateExpression(ExpressionNode node)
+    {
+        if (node is LiteralExpressionNode literal)
+        {
+            return literal.Type == "string" ? $"\"{literal.Value}\"" : literal.Value;
+        }
+
+        if (node is VariableExpressionNode variable)
+        {
+            return variable.VariableName;
+        }
+
+        if (node is BinaryExpressionNode binary)
+        {
+            string leftCode = GenerateExpression(binary.Left);
+            string rightCode = GenerateExpression(binary.Right);
+
+            return $"{leftCode} {binary.Operator} {rightCode}";
+        }
+
+        if (node is GroupingExpressionNode grouping)
+        {
+            return $"({GenerateExpression(grouping.Expression)})";
+        }
+
+        return "";
     }
 }

@@ -21,14 +21,14 @@ public class VariableDeclarationNode : StatementNode
 {
     public string VariableName { get; set; }
     public string DataType {get; set; }
-    public string InitialValue { get; set; }
+    public ExpressionNode InitialValue { get; set; }
 }
 
 public class VariableAssignmentNode : StatementNode
 {
     public string VariableName { get; set; }
     public string Operator { get; set; }
-    public string newValue { get; set; }
+    public ExpressionNode ValueExpression { get; set; }
 }
 
 public class ConditionalNode : StatementNode
@@ -45,15 +45,23 @@ public class PrintStatementNode : StatementNode
 
 public class LiteralExpressionNode : ExpressionNode
 {
-    
+    public string Value { get; set; }
+    public string Type { get; set; }
 }
 
 public class VariableExpressionNode : ExpressionNode
 {
-    
+    public string VariableName { get; set; }
 }
 
 public class BinaryExpressionNode : ExpressionNode
 {
-    
+    public ExpressionNode Left { get; set; }
+    public string Operator { get; set; }
+    public ExpressionNode Right { get; set; }
+}
+
+public class GroupingExpressionNode : ExpressionNode
+{
+    public ExpressionNode Expression { get; set; }
 }
