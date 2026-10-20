@@ -61,7 +61,7 @@ public class CodeGenerator
                 code += GenerateExpression(exprNode);
             }
 
-            code += " {\n";
+            code += "\n    {\n";
 
             foreach (ASTNode ifNode in condNode.IfBranch)
             {
@@ -79,6 +79,9 @@ public class CodeGenerator
             }
 
             code += "    }\n";
+        } else if (node is PrintStatementNode printNode)
+        {
+            code += $"    printf({printNode.text});\n";
         }
 
         return code;

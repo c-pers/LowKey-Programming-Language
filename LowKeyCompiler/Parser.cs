@@ -21,6 +21,35 @@ public class Parser
         Tokens = tokens;
     }
 
+    private string ExpressionToString(ExpressionNode node)
+    {
+        string convertedStr = "";
+
+        if (node is VariableExpressionNode varExprNode)
+        {
+            convertedStr += $"{varExprNode.VariableName}";
+        } else if (node is BinaryExpressionNode binExprNode)
+        {
+            string left = ExpressionToString(binExprNode.Left);
+
+            string op = $"{binExprNode.Operator}";
+
+            string right = ExpressionToString(binExprNode.Right);
+
+            convertedStr += $"{left} {op} {right}";
+        } else if (node is GroupingExpressionNode groupExprNode)
+        {
+            string groupStr = ExpressionToString(groupExprNode.Expression);
+
+            convertedStr += $"({groupStr})";
+        } else if (node is LiteralExpressionNode litExprNode)
+        {
+            convertedStr += $"{litExprNode.Value}";
+        }
+        
+        return convertedStr;
+    }
+
     // Peeks the current token
     private Token Peek()
     {
@@ -86,6 +115,9 @@ public class Parser
             } else if (currentToken.value == "if")
             {
                 return ParseCondition();
+            } else if (currentToken.value == "print")
+            {
+                return ParsePrint();
             }
         } else if (currentToken.type == TokenType.Identifier)
         {
@@ -189,6 +221,8 @@ public class Parser
             } else
             {
                 Console.WriteLine($"Compiler Error: Expected ')' after expression, got {Peek().value}.");
+
+                return null;
             }
 
             return new GroupingExpressionNode { Expression = expr };
@@ -379,8 +413,137 @@ public class Parser
         } else
         {
             Console.WriteLine($"Compiler Error: Expected 'end', got '{Peek().value}'.");
+
+            return null;
         }
 
         return condNode;
+    }
+
+    private PrintStatementNode ParsePrint()
+    {
+        PrintStatementNode printNode = new PrintStatementNode();
+
+        Consume();
+
+        if (Expect(TokenType.RoundBracket))
+        {
+            Consume();
+
+            if (Peek().type == TokenType.String)
+            {
+                string str = "";
+
+                while (Peek().type != TokenType.EOF && Peek().type == TokenType.String)
+                {
+                    str += Peek().value;
+
+                    Consume();
+                }
+
+                printNode.text = $"\"{str}\"";
+
+                if (Expect(TokenType.RoundBracket))
+                {
+                    Consume();
+                } else
+                {
+                    Console.WriteLine($"Compiler Error: Expected ')', got {Peek().value}.");
+
+                    return null;
+                }
+
+                if (Expect(TokenType.Semicolon))
+                {
+                    Consume();
+                } else
+                {
+                    Console.WriteLine($"Compiler Error: Expected ';', got {Peek().value}.");
+
+                    return null;
+                }
+            } else if (Expect(TokenType.Identifier))
+            {
+                ExpressionNode printStmt = ParseExpression();
+
+                string str = ExpressionToString(printStmt);
+
+                if (str.Length > 0)
+                {
+                    printNode.text = str;
+                } else
+                {
+                    return null;
+                }
+
+                if (Expect(TokenType.RoundBracket))
+                {
+                    Consume();
+                } else
+                {
+                    Console.WriteLine($"Compiler Error: Expected ')', got {Peek().value}.");
+
+                    return null;
+                }
+
+                if (Expect(TokenType.Semicolon))
+                {
+                    Consume();
+                } else
+                {
+                    Console.WriteLine($"Compiler Error: Expected ';', got {Peek().value}.");
+
+                    return null;
+                }
+            } else if (Expect(TokenType.Number))
+            {
+                ExpressionNode printStmt = ParseExpression();
+
+                string str = ExpressionToString(printStmt);
+
+                if (str.Length > 0)
+                {
+                    printNode.text = str;
+                } else
+                {
+                    return null;
+                }
+
+                if (Expect(TokenType.RoundBracket))
+                {
+                    Consume();
+                } else
+                {
+                    Console.WriteLine($"Compiler Error: Expected ')', got {Peek().value}.");
+
+                    return null;
+                }
+
+                if (Expect(TokenType.Semicolon))
+                {
+                    Consume();
+                } else
+                {
+                    Console.WriteLine($"Compiler Error: Expected ';', got {Peek().value}.");
+
+                    return null;
+                }
+            } else if (Expect(TokenType.RoundBracket))
+            {
+                
+            } else
+            {
+                Console.WriteLine($"Compiler Error: Undefined statement '{Peek().value}'.");
+
+                return null;
+            }
+        } else
+        {
+            Console.WriteLine($"Compiler Error: Expected '(', got {Peek().value}.");
+
+            return null;
+        }
+
+        return printNode;
     }
 }
