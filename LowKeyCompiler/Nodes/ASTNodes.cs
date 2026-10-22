@@ -46,7 +46,7 @@ public class ConditionalNode : StatementNode
 
 public class PrintStatementNode : StatementNode
 {
-    public string text { get; set; }
+    public ExpressionNode Expression { get; set; }
 }
 
 // Nodes inheriting ExpressionNode

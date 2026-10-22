@@ -1,7 +1,5 @@
 // The Parser aims to get the list of tokens returned by the lexer and to convert everything to Abstract Syntax Tree nodes
 
-using System.Runtime.InteropServices;
-
 public class Parser
 {
     private readonly List<Token> Tokens;
@@ -19,35 +17,6 @@ public class Parser
     public Parser(List<Token> tokens)
     {
         Tokens = tokens;
-    }
-
-    private string ExpressionToString(ExpressionNode node)
-    {
-        string convertedStr = "";
-
-        if (node is VariableExpressionNode varExprNode)
-        {
-            convertedStr += $"{varExprNode.VariableName}";
-        } else if (node is BinaryExpressionNode binExprNode)
-        {
-            string left = ExpressionToString(binExprNode.Left);
-
-            string op = $"{binExprNode.Operator}";
-
-            string right = ExpressionToString(binExprNode.Right);
-
-            convertedStr += $"{left} {op} {right}";
-        } else if (node is GroupingExpressionNode groupExprNode)
-        {
-            string groupStr = ExpressionToString(groupExprNode.Expression);
-
-            convertedStr += $"({groupStr})";
-        } else if (node is LiteralExpressionNode litExprNode)
-        {
-            convertedStr += $"{litExprNode.Value}";
-        }
-        
-        return convertedStr;
     }
 
     // Peeks the current token
@@ -433,116 +402,30 @@ public class Parser
         {
             Consume();
 
-            if (Peek().type == TokenType.String)
+            printNode.Expression = ParseExpression();
+
+            if (Expect(TokenType.RoundBracket))
             {
-                string str = "";
-
-                while (Peek().type != TokenType.EOF && Peek().type == TokenType.String)
-                {
-                    str += Peek().value;
-
-                    Consume();
-                }
-
-                printNode.text = $"\"{str}\"";
-
-                if (Expect(TokenType.RoundBracket))
-                {
-                    Consume();
-                } else
-                {
-                    Console.WriteLine($"Compiler Error: Expected ')', got {Peek().value}.");
-
-                    return null;
-                }
-
-                if (Expect(TokenType.Semicolon))
-                {
-                    Consume();
-                } else
-                {
-                    Console.WriteLine($"Compiler Error: Expected ';', got {Peek().value}.");
-
-                    return null;
-                }
-            } else if (Expect(TokenType.Identifier))
-            {
-                ExpressionNode printStmt = ParseExpression();
-
-                string str = ExpressionToString(printStmt);
-
-                if (str.Length > 0)
-                {
-                    printNode.text = str;
-                } else
-                {
-                    return null;
-                }
-
-                if (Expect(TokenType.RoundBracket))
-                {
-                    Consume();
-                } else
-                {
-                    Console.WriteLine($"Compiler Error: Expected ')', got {Peek().value}.");
-
-                    return null;
-                }
-
-                if (Expect(TokenType.Semicolon))
-                {
-                    Consume();
-                } else
-                {
-                    Console.WriteLine($"Compiler Error: Expected ';', got {Peek().value}.");
-
-                    return null;
-                }
-            } else if (Expect(TokenType.Number))
-            {
-                ExpressionNode printStmt = ParseExpression();
-
-                string str = ExpressionToString(printStmt);
-
-                if (str.Length > 0)
-                {
-                    printNode.text = str;
-                } else
-                {
-                    return null;
-                }
-
-                if (Expect(TokenType.RoundBracket))
-                {
-                    Consume();
-                } else
-                {
-                    Console.WriteLine($"Compiler Error: Expected ')', got {Peek().value}.");
-
-                    return null;
-                }
-
-                if (Expect(TokenType.Semicolon))
-                {
-                    Consume();
-                } else
-                {
-                    Console.WriteLine($"Compiler Error: Expected ';', got {Peek().value}.");
-
-                    return null;
-                }
-            } else if (Expect(TokenType.RoundBracket))
-            {
-                
+                Consume();
             } else
             {
-                Console.WriteLine($"Compiler Error: Undefined statement '{Peek().value}'.");
+                Console.WriteLine($"Compiler Error: Expected ')', got {Peek().value}'.");
+
+                return null;
+            }
+
+            if (Expect(TokenType.Semicolon))
+            {
+                Consume();
+            } else
+            {
+                Console.WriteLine($"Compiler Error: Expected ';', got '{Peek().value}'.");
 
                 return null;
             }
         } else
         {
-            Console.WriteLine($"Compiler Error: Expected '(', got {Peek().value}.");
+            Console.WriteLine($"Compiler Error: Expected '(', got '{Peek().value}'.");
 
             return null;
         }

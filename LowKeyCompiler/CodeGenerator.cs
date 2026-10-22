@@ -1,5 +1,3 @@
-using System.Xml;
-
 public class CodeGenerator
 {
     private readonly List<ASTNode> Nodes;
@@ -83,7 +81,15 @@ public class CodeGenerator
             code += "    }\n";
         } else if (node is PrintStatementNode printNode)
         {
-            code += $"    printf({printNode.text});\n";
+            string exprStr = GenerateExpression(printNode.Expression);
+
+            if (printNode.Expression is LiteralExpressionNode lit && lit.Type == "string")
+            {
+                code += $"    printf(\"%s\", \"{lit.Value}\");\n";
+            } else
+            {
+                code += $"    printf(\"%d\", {exprStr});\n";
+            }
         } else if (node is WhileStatementNode whileNode)
         {
             string conditionStr = GenerateExpression(whileNode.Condition);
