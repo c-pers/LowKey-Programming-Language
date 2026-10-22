@@ -12,7 +12,9 @@ public class Lexer
       '+',
       '-',
       '*',
-      '/',  
+      '/',
+      '<',
+      '>',
     };
 
     // Constructor, gets the string to analyze (entire file)
@@ -98,7 +100,7 @@ public class Lexer
     {
         return text switch
         {
-            "int" or "string" or "decimal" or "if" or "do" or "else" or "end" or "print" => TokenType.Keyword,
+            "int" or "string" or "decimal" or "if" or "do" or "else" or "end" or "print" or "while" => TokenType.Keyword,
             _ => TokenType.Identifier
         };
     }

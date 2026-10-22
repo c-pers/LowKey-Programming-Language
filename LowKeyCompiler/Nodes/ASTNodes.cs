@@ -15,6 +15,12 @@ public class ExpressionNode : ASTNode
     
 }
 
+public class WhileStatementNode : ASTNode
+{
+    public ExpressionNode Condition { get; set; }
+    public List<ASTNode> Body { get; set; } = new List<ASTNode>();
+}
+
 // Nodes inheriting StatementNode
 
 public class VariableDeclarationNode : StatementNode

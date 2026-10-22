@@ -12,13 +12,15 @@ public class CodeGenerator
     public string Generate()
     {
         string code = "#include <stdio.h>\n\n" +
-                      "int Main()\n" +
+                      "int main()\n" +
                       "{\n";
 
         foreach (ASTNode node in Nodes)
         {
             code += GenerateNode(node);
         }
+
+        code += "    return 0;\n";
 
         code += "}";
 
@@ -82,6 +84,20 @@ public class CodeGenerator
         } else if (node is PrintStatementNode printNode)
         {
             code += $"    printf({printNode.text});\n";
+        } else if (node is WhileStatementNode whileNode)
+        {
+            string conditionStr = GenerateExpression(whileNode.Condition);
+            string bodyStr = "";
+
+            foreach (var whileBodyNode in whileNode.Body)
+            {
+                bodyStr += GenerateNode(whileBodyNode);
+            }
+
+            code += $"    while ({conditionStr})\n";
+            code += "    {\n";
+            code += $"    {bodyStr}";
+            code += "    }\n";
         }
 
         return code;

@@ -118,6 +118,9 @@ public class Parser
             } else if (currentToken.value == "print")
             {
                 return ParsePrint();
+            } else if (currentToken.value == "while")
+            {
+                return ParseWhile();
             }
         } else if (currentToken.type == TokenType.Identifier)
         {
@@ -545,5 +548,49 @@ public class Parser
         }
 
         return printNode;
+    }
+
+    private WhileStatementNode ParseWhile()
+    {
+        WhileStatementNode whileNode = new WhileStatementNode();
+
+        Consume();
+
+        whileNode.Condition = ParseExpression();
+
+        if (Peek().value == "do")
+        {
+            Consume();
+
+            while (Peek().type != TokenType.EOF && Peek().value != "end")
+            {
+                ASTNode stmt = Parse();
+
+                if (stmt != null)
+                {
+                    whileNode.Body.Add(stmt);
+                } else
+                {
+                    Consume();
+                }
+            }
+        } else
+        {
+            Console.WriteLine($"Compiler Error: Expected 'do' after while condition, got '{Peek().value}'.");
+
+            return null;
+        }
+
+        if (Peek().value == "end")
+        {
+            Consume();
+        } else
+        {
+            Console.WriteLine($"Compiler Error: Expected 'end' to close while loop, got '{Peek().value}'.");
+
+            return null;
+        }
+
+        return whileNode;
     }
 }
